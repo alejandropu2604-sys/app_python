@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ToDo App</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="app-wrapper">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="logo">
+          <span class="logo-icon">✓</span>
+          <h1>Mis Tareas</h1>
+        </div>
+        <div class="stats">
+          <span id="stats-text">0 tareas pendientes</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+
+      <!-- Form: nueva tarea -->
+      <section class="card form-card">
+        <h2 class="section-title">Nueva Tarea</h2>
+        <form id="task-form" class="task-form">
+          <div class="form-row">
+            <input
+              type="text"
+              id="input-title"
+              class="input-field"
+              placeholder="¿Qué necesitas hacer?"
+              maxlength="200"
+              required
+            />
+          </div>
+          <div class="form-row form-row--split">
+            <textarea
+              id="input-description"
+              class="input-field input-textarea"
+              placeholder="Descripción (opcional)"
+              rows="2"
+            ></textarea>
+            <div class="form-side">
+              <select id="input-priority" class="input-field input-select">
+                <option value="low">🟢 Baja</option>
+                <option value="medium" selected>🟡 Media</option>
+                <option value="high">🔴 Alta</option>
+              </select>
+              <button type="submit" class="btn btn-primary btn-full">
+                <span>+ Agregar</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <!-- Filtros -->
+      <section class="filters-bar">
+        <div class="filter-group">
+          <button class="filter-btn active" data-filter="status" data-value="all">Todas</button>
+          <button class="filter-btn" data-filter="status" data-value="active">Pendientes</button>
+          <button class="filter-btn" data-filter="status" data-value="completed">Completadas</button>
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn" data-filter="priority" data-value="all">📋 Todas</button>
+          <button class="filter-btn" data-filter="priority" data-value="high">🔴 Alta</button>
+          <button class="filter-btn" data-filter="priority" data-value="medium">🟡 Media</button>
+          <button class="filter-btn" data-filter="priority" data-value="low">🟢 Baja</button>
+        </div>
+        <div class="search-wrap">
+          <input type="text" id="search-input" class="input-field input-search" placeholder="🔍 Buscar tarea..." />
+        </div>
+      </section>
+
+      <!-- Lista de tareas -->
+      <section class="task-list-section">
+        <div id="task-list" class="task-list"></div>
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-icon">📝</div>
+          <p>No hay tareas aquí todavía.</p>
+        </div>
+      </section>
+
+      <!-- Acciones globales -->
+      <div class="global-actions">
+        <button id="btn-clear-completed" class="btn btn-danger-outline">Eliminar completadas</button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal de edición -->
+  <div id="edit-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Editar Tarea</h3>
+        <button id="modal-close" class="btn-icon">✕</button>
+      </div>
+      <form id="edit-form" class="task-form">
+        <input type="hidden" id="edit-id" />
+        <div class="form-row">
+          <label class="form-label">Título</label>
+          <input type="text" id="edit-title" class="input-field" maxlength="200" required />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Descripción</label>
+          <textarea id="edit-description" class="input-field input-textarea" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Prioridad</label>
+          <select id="edit-priority" class="input-field input-select">
+            <option value="low">🟢 Baja</option>
+            <option value="medium">🟡 Media</option>
+            <option value="high">🔴 Alta</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="modal-cancel" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
