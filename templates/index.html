@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>aplicación de tareas</title>
+  <title>ToDo App</title>
   <link rel="stylesheet" href="/static/css/styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -16,87 +16,124 @@
       <div class="header-content">
         <div class="logo">
           <span class="logo-icon">✓</span>
-          <h1>Tareas</h1>
+          <h1>Mis Tareas</h1>
         </div>
         <div class="stats">
           <span id="stats-text">0 tareas pendientes</span>
         </div>
       </div>
+
+      <!-- Tabs de navegación -->
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="tasks">📋 Tareas</button>
+        <button class="tab-btn" data-tab="users">👥 Usuarios</button>
+      </nav>
     </header>
 
     <main class="app-main">
 
-      <!-- Form: nueva tarea -->
-      <section class="card form-card">
-        <h2 class="section-title">Nueva Tarea</h2>
-        <form id="task-form" class="task-form">
-          <div class="form-row">
-            <input
-              type="text"
-              id="input-title"
-              class="input-field"
-              placeholder="¿Qué necesitas hacer?"
-              maxlength="200"
-              required
-            />
-          </div>
-          <div class="form-row form-row--split">
-            <textarea
-              id="input-description"
-              class="input-field input-textarea"
-              placeholder="Descripción (opcional)"
-              rows="2"
-            ></textarea>
-            <div class="form-side">
-              <select id="input-priority" class="input-field input-select">
-                <option value="low">🟢 Baja</option>
-                <option value="medium" selected>🟡 Media</option>
-                <option value="high">🔴 Alta</option>
-              </select>
-              <button type="submit" class="btn btn-primary btn-full">
-                <span>+ Agregar</span>
-              </button>
+      <!-- ══════════════ PESTAÑA: TAREAS ══════════════ -->
+      <div id="tab-tasks" class="tab-panel">
+
+        <!-- Formulario nueva tarea -->
+        <section class="card form-card">
+          <h2 class="section-title">Nueva Tarea</h2>
+          <form id="task-form" class="task-form">
+            <div class="form-row">
+              <input type="text" id="input-title" class="input-field"
+                placeholder="¿Qué necesitas hacer?" maxlength="200" required />
             </div>
+            <div class="form-row">
+              <textarea id="input-description" class="input-field input-textarea"
+                placeholder="Descripción (opcional)" rows="2"></textarea>
+            </div>
+            <div class="form-row form-row--three">
+              <select id="input-priority" class="input-field input-select">
+                <option value="low">🟢 Prioridad Baja</option>
+                <option value="medium" selected>🟡 Prioridad Media</option>
+                <option value="high">🔴 Prioridad Alta</option>
+              </select>
+              <select id="input-user" class="input-field input-select">
+                <option value="">👤 Sin asignar</option>
+              </select>
+              <button type="submit" class="btn btn-primary">+ Agregar</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Filtros -->
+        <section class="filters-bar">
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="status" data-value="all">Todas</button>
+            <button class="filter-btn" data-filter="status" data-value="active">Pendientes</button>
+            <button class="filter-btn" data-filter="status" data-value="completed">Completadas</button>
           </div>
-        </form>
-      </section>
+          <div class="filter-group">
+            <button class="filter-btn" data-filter="priority" data-value="all">📋 Todas</button>
+            <button class="filter-btn" data-filter="priority" data-value="high">🔴 Alta</button>
+            <button class="filter-btn" data-filter="priority" data-value="medium">🟡 Media</button>
+            <button class="filter-btn" data-filter="priority" data-value="low">🟢 Baja</button>
+          </div>
+          <div class="filter-group" id="user-filter-group">
+            <!-- Se llena dinámicamente -->
+          </div>
+          <div class="search-wrap">
+            <input type="text" id="search-input" class="input-field input-search" placeholder="🔍 Buscar tarea..." />
+          </div>
+        </section>
 
-      <!-- Filtros -->
-      <section class="filters-bar">
-        <div class="filter-group">
-          <button class="filter-btn active" data-filter="status" data-value="all">Todas</button>
-          <button class="filter-btn" data-filter="status" data-value="active">Pendientes</button>
-          <button class="filter-btn" data-filter="status" data-value="completed">Completadas</button>
-        </div>
-        <div class="filter-group">
-          <button class="filter-btn" data-filter="priority" data-value="all">📋 Todas</button>
-          <button class="filter-btn" data-filter="priority" data-value="high">🔴 Alta</button>
-          <button class="filter-btn" data-filter="priority" data-value="medium">🟡 Media</button>
-          <button class="filter-btn" data-filter="priority" data-value="low">🟢 Baja</button>
-        </div>
-        <div class="search-wrap">
-          <input type="text" id="search-input" class="input-field input-search" placeholder="🔍 Buscar tarea..." />
-        </div>
-      </section>
+        <!-- Lista de tareas -->
+        <section class="task-list-section">
+          <div id="task-list" class="task-list"></div>
+          <div id="empty-state" class="empty-state hidden">
+            <div class="empty-icon">📝</div>
+            <p>No hay tareas aquí todavía.</p>
+          </div>
+        </section>
 
-      <!-- Lista de tareas -->
-      <section class="task-list-section">
-        <div id="task-list" class="task-list"></div>
-        <div id="empty-state" class="empty-state hidden">
-          <div class="empty-icon">📝</div>
-          <p>No hay tareas aquí todavía.</p>
+        <!-- Acciones globales -->
+        <div class="global-actions">
+          <button id="btn-clear-completed" class="btn btn-danger-outline">Eliminar completadas</button>
         </div>
-      </section>
+      </div>
 
-      <!-- Acciones globales -->
-      <div class="global-actions">
-        <button id="btn-clear-completed" class="btn btn-danger-outline">Eliminar completadas</button>
+      <!-- ══════════════ PESTAÑA: USUARIOS ══════════════ -->
+      <div id="tab-users" class="tab-panel hidden">
+
+        <!-- Formulario nuevo usuario -->
+        <section class="card form-card">
+          <h2 class="section-title">Nuevo Usuario</h2>
+          <form id="user-form" class="task-form">
+            <div class="form-row form-row--two">
+              <input type="text" id="input-user-name" class="input-field"
+                placeholder="Nombre completo" maxlength="100" required />
+              <input type="email" id="input-user-email" class="input-field"
+                placeholder="Email" maxlength="150" required />
+            </div>
+            <div class="form-row form-row--color">
+              <div class="color-picker-wrap">
+                <label class="form-label">Color de avatar</label>
+                <div class="color-presets" id="color-presets"></div>
+                <input type="color" id="input-user-color" class="input-color" value="#6366f1" />
+              </div>
+              <button type="submit" class="btn btn-primary btn-add-user">+ Agregar Usuario</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Lista de usuarios -->
+        <div id="user-list" class="user-list"></div>
+        <div id="empty-users" class="empty-state hidden">
+          <div class="empty-icon">👥</div>
+          <p>No hay usuarios todavía.</p>
+        </div>
+
       </div>
 
     </main>
   </div>
 
-  <!-- Modal de edición -->
+  <!-- ══════ Modal editar tarea ══════ -->
   <div id="edit-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -121,8 +158,44 @@
             <option value="high">🔴 Alta</option>
           </select>
         </div>
+        <div class="form-row">
+          <label class="form-label">Asignado a</label>
+          <select id="edit-user" class="input-field input-select">
+            <option value="">👤 Sin asignar</option>
+          </select>
+        </div>
         <div class="modal-actions">
           <button type="button" id="modal-cancel" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════ Modal editar usuario ══════ -->
+  <div id="edit-user-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Editar Usuario</h3>
+        <button id="edit-user-modal-close" class="btn-icon">✕</button>
+      </div>
+      <form id="edit-user-form" class="task-form">
+        <input type="hidden" id="edit-user-id" />
+        <div class="form-row">
+          <label class="form-label">Nombre</label>
+          <input type="text" id="edit-user-name" class="input-field" maxlength="100" required />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Email</label>
+          <input type="email" id="edit-user-email" class="input-field" maxlength="150" required />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Color de avatar</label>
+          <div class="color-presets" id="edit-color-presets"></div>
+          <input type="color" id="edit-user-color" class="input-color" value="#6366f1" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="edit-user-modal-cancel" class="btn btn-secondary">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar cambios</button>
         </div>
       </form>
