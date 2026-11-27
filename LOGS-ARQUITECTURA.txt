@@ -1,0 +1,247 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    ARQUITECTURA DEL SISTEMA DE LOGGING
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            APLICACIÓN FLASK (app.py)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+         ┌────────────────────────────────────────────────────┐
+         │         Logger de Flask (configurado)              │
+         │         Nivel: DEBUG (captura todo)                │
+         └────────────────────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    │                 │                 │
+                    ▼                 ▼                 ▼
+         ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+         │  Handler #1  │  │  Handler #2  │  │  Handler #3  │
+         │   EVENTOS    │  │   ERRORES    │  │   COMPLETO   │
+         └──────────────┘  └──────────────┘  └──────────────┘
+                │                 │                 │
+                │                 │                 │
+        [EventFilter]      [Nivel: ERROR]   [Nivel: DEBUG]
+        Solo mensajes            │                 │
+        con extra=               │                 │
+        {'event': True}          │                 │
+                │                 │                 │
+                ▼                 ▼                 ▼
+         ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+         │ events.log   │  │  error.log   │  │   app.log    │
+         │              │  │              │  │              │
+         │ USER_CREATED │  │ Excepciones  │  │ DEBUG: GET   │
+         │ TASK_UPDATED │  │ Stack traces │  │ INFO: Inicio │
+         │ etc.         │  │ Errores 500  │  │ WARNING: X   │
+         │              │  │              │  │ ERROR: Y     │
+         └──────────────┘  └──────────────┘  └──────────────┘
+                │                 │                 │
+                └─────────────────┴─────────────────┘
+                                  │
+                                  ▼
+                        ┌──────────────────┐
+                        │  ROTACIÓN AUTO   │
+                        │  10 MB × 10      │
+                        │  archivos        │
+                        └──────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                            TIPOS DE MENSAJES
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ EVENTOS DE NEGOCIO (events.log)                                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ - Se generan con: log_event(logger, 'TIPO', 'desc', campo=valor)           │
+│ - Solo aparecen en events.log (filtrados por EventFilter)                  │
+│ - Formato limpio y legible                                                 │
+│                                                                             │
+│ Ejemplo:                                                                    │
+│ [2024-01-15 10:30:45] [USER_CREATED] Nuevo usuario | user_id=1 | name=Juan│
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ERRORES (error.log)                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ - Captura logger.error() y excepciones                                     │
+│ - Incluye stack traces completos                                           │
+│ - Formato detallado con módulo, función y línea                            │
+│                                                                             │
+│ Ejemplo:                                                                    │
+│ [2024-01-15 10:45:12] ERROR in app (handle_exception:95):                 │
+│ Excepción no manejada: division by zero                                    │
+│ Traceback (most recent call last):                                         │
+│   File "app.py", line 93, in some_function                                │
+│     result = 10 / 0                                                        │
+│ ZeroDivisionError: division by zero                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LOG COMPLETO (app.log)                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ - Captura TODO: DEBUG, INFO, WARNING, ERROR                                │
+│ - Útil para debugging y auditoría completa                                 │
+│ - Incluye peticiones HTTP, consultas DB, validaciones, etc.                │
+│                                                                             │
+│ Ejemplo:                                                                    │
+│ [2024-01-15 10:30:45] INFO in app (setup_logging:65): App iniciada        │
+│ [2024-01-15 10:30:46] DEBUG in app (before_request:85): GET /api/users    │
+│ [2024-01-15 10:30:46] DEBUG in app (get_users:120): 5 usuarios encontrados│
+│ [2024-01-15 10:30:46] DEBUG in app (after_request:90): Status: 200        │
+│ [2024-01-15 10:30:50] WARNING in app (create_user:145): Email duplicado   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        FLUJO DE UNA PETICIÓN TÍPICA
+═══════════════════════════════════════════════════════════════════════════════
+
+Usuario hace: POST /api/users {"name": "Juan", "email": "juan@test.com"}
+
+    1. @app.before_request
+       └─> app.log: DEBUG - POST /api/users | IP: 192.168.1.100
+
+    2. create_user() ejecuta validaciones
+       └─> app.log: DEBUG - Validando datos de usuario
+
+    3. db.session.commit() guarda usuario
+       └─> app.log: DEBUG - Usuario guardado en DB
+
+    4. log_event() registra el evento
+       ├─> events.log: [USER_CREATED] Nuevo usuario | user_id=1 | name=Juan
+       └─> app.log: INFO - [USER_CREATED] Nuevo usuario | user_id=1 | name=Juan
+
+    5. @app.after_request
+       └─> app.log: DEBUG - POST /api/users | Status: 201
+
+
+Si hay un error en paso 3:
+    
+    3. db.session.commit() falla
+       ├─> error.log: ERROR - SQLAlchemy integrity error [+ stack trace]
+       └─> app.log: ERROR - SQLAlchemy integrity error [+ stack trace]
+
+    4. @app.errorhandler(Exception)
+       ├─> error.log: ERROR - Excepción no manejada [+ stack trace]
+       └─> app.log: ERROR - Excepción no manejada [+ stack trace]
+
+    5. Respuesta 500 al cliente
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        COMPONENTES DEL SISTEMA
+═══════════════════════════════════════════════════════════════════════════════
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ logger_config.py                                                           │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  setup_logging(app)                                                        │
+│    └─> Configura 3 handlers + 1 consola                                  │
+│        - EventHandler → events.log (con EventFilter)                      │
+│        - ErrorHandler → error.log (nivel ERROR)                           │
+│        - AppHandler → app.log (nivel DEBUG)                               │
+│        - ConsoleHandler → stdout (nivel WARNING)                          │
+│                                                                            │
+│  EventFilter                                                               │
+│    └─> Filtra solo mensajes con extra={'event': True}                    │
+│                                                                            │
+│  log_event(logger, type, desc, **kwargs)                                  │
+│    └─> Helper para registrar eventos de negocio                          │
+│        Ejemplo: log_event(logger, 'USER_CREATED', '...', user_id=1)      │
+│                                                                            │
+│  log_request(logger, request, status)                                     │
+│    └─> Registra peticiones HTTP con IP, método, path, status             │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ app.py (integración)                                                       │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  Inicio: logger = setup_logging(app)                                      │
+│                                                                            │
+│  Middlewares:                                                              │
+│    - @app.before_request → log_request()                                  │
+│    - @app.after_request → log_request() con status                        │
+│    - @app.errorhandler(Exception) → logger.error() con exc_info           │
+│                                                                            │
+│  En cada endpoint:                                                         │
+│    - logger.debug() para consultas                                        │
+│    - logger.warning() para validaciones fallidas                          │
+│    - log_event() para acciones exitosas                                   │
+│    - logger.error() para errores                                          │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│ view_logs.py (visualización)                                               │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  python view_logs.py events           → Ver events.log                    │
+│  python view_logs.py errors           → Ver error.log                     │
+│  python view_logs.py all              → Ver app.log                       │
+│  python view_logs.py events --follow  → Seguir en tiempo real             │
+│  python view_logs.py stats            → Estadísticas                      │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        DESPLIEGUE EN PRODUCCIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                               EC2 UBUNTU                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Usuario → Nginx (puerto 80) → Gunicorn (puerto 8000) → Flask App          │
+│                                                                             │
+│  Logs de Nginx:                                                             │
+│    /var/log/nginx/flask-app-access.log  ← Todas las peticiones HTTP        │
+│    /var/log/nginx/flask-app-error.log   ← Errores de Nginx                 │
+│                                                                             │
+│  Logs de Supervisor/Gunicorn:                                               │
+│    /var/log/flask-app/flask-app.out.log ← stdout de Gunicorn               │
+│    /var/log/flask-app/flask-app.err.log ← stderr de Gunicorn               │
+│                                                                             │
+│  Logs de la aplicación (estructurados):                                     │
+│    /home/ubuntu/app_python/logs/events.log                                  │
+│    /home/ubuntu/app_python/logs/error.log                                   │
+│    /home/ubuntu/app_python/logs/app.log                                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Comandos útiles en producción:
+
+  # Ver eventos en tiempo real
+  tail -f /home/ubuntu/app_python/logs/events.log
+
+  # Buscar usuarios creados hoy
+  grep "USER_CREATED" /home/ubuntu/app_python/logs/events.log | grep "2024-01-15"
+
+  # Contar tareas completadas
+  grep "TASK_COMPLETED" /home/ubuntu/app_python/logs/events.log | wc -l
+
+  # Ver últimos errores
+  tail -50 /home/ubuntu/app_python/logs/error.log
+
+  # Ver todas las peticiones HTTP (Nginx)
+  tail -f /var/log/nginx/flask-app-access.log
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                                  RESUMEN
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ 3 archivos de log separados por propósito
+✅ Rotación automática (10 MB × 10 archivos = 100 MB historial)
+✅ Eventos de negocio rastreables y legibles
+✅ Errores con stack traces completos
+✅ Peticiones HTTP registradas (IP, método, path, status)
+✅ Herramienta view_logs.py para visualización fácil
+✅ Integración completa en toda la aplicación
+✅ Listo para producción con Supervisor y Nginx
+
+═══════════════════════════════════════════════════════════════════════════════
